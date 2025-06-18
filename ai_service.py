@@ -6,25 +6,29 @@ import sys
 
 class AIService:
     def __init__(self):
+        # API ключ OpenRouter
+        self.openrouter_api_key = "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"
+        
         # Проверка версии OpenAI SDK
         self.is_old_version = False
         try:
             # Пытаемся использовать новый интерфейс
             self.client = openai.OpenAI(
-                api_key=OPENAI_API_KEY,
+                api_key=self.openrouter_api_key,  # Используем ключ OpenRouter вместо OPENAI_API_KEY
                 base_url="https://openrouter.ai/api/v1"
             )
         except AttributeError:
             # Если не получается, используем старый интерфейс
             print("Используется старая версия OpenAI SDK (0.28.x)")
             self.is_old_version = True
-            openai.api_key = OPENAI_API_KEY
+            openai.api_key = self.openrouter_api_key  # Используем ключ OpenRouter вместо OPENAI_API_KEY
             openai.api_base = "https://openrouter.ai/api/v1"
             
         # Заголовки для OpenRouter API
         self.headers = {
             "HTTP-Referer": "https://github.com/PRISSET/botmem",
-            "X-Title": "ChatGPT Bot"
+            "X-Title": "ChatGPT Bot",
+            "Authorization": f"Bearer {self.openrouter_api_key}"  # Добавляем Authorization заголовок
         }
         
         self.target_names = ["Назар", "Леша", "Миша", "Михаил", "Андрей", "Дима"]
