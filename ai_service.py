@@ -6,6 +6,7 @@ import sys
 import os
 import requests
 import json
+import aiohttp
 
 class AIService:
     def __init__(self):
@@ -13,44 +14,100 @@ class AIService:
         self.api_key = "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"
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
         
-        # Заголовки для запросов к API
+        # Заголовки для запросов к API - разные варианты авторизации
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
             "HTTP-Referer": "https://github.com/PRISSET/botmem",
-            "X-Title": "ChatGPT Bot"
+            "X-Title": "ChatGPT Bot",
+            "OpenAI-Organization": "openrouter"
         }
         
         self.target_names = ["Назар", "Леша", "Миша", "Михаил", "Андрей", "Дима"]
     
     async def _send_request(self, messages, max_tokens=1000, temperature=0.8):
-        """Отправляет запрос к API OpenRouter напрямую через requests"""
+        """Отправляет запрос к API OpenRouter напрямую через aiohttp"""
         try:
             data = {
                 "model": "openai/gpt-4o-mini",
                 "messages": messages,
                 "max_tokens": max_tokens,
-                "temperature": temperature
+                "temperature": temperature,
+                "route": "fallback"
             }
             
             print(f"Отправка запроса к OpenRouter API: {self.api_url}")
             print(f"Заголовки: {self.headers}")
-            print(f"Данные: {json.dumps(data)[:200]}...")
             
-            response = requests.post(
-                url=self.api_url,
-                headers=self.headers,
-                json=data
-            )
-            
-            print(f"Статус ответа: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"Ошибка API: {response.text}")
-                return None
-                
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
+            # Используем aiohttp вместо requests
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    url=self.api_url,
+                    headers=self.headers,
+                    json=data
+                ) as response:
+                    print(f"Статус ответа: {response.status}")
+                    
+                    if response.status != 200:
+                        response_text = await response.text()
+                        print(f"Ошибка API: {response_text}")
+                        
+                        # Попробуем альтернативный способ, отправляя ключ API в параметре
+                        print("Пробуем альтернативный способ...")
+                        
+                        # Добавляем api_key непосредственно в данные запроса
+                        data["api_key"] = self.api_key
+                        
+                        # Попытка 2: с ключом в данных
+                        async with session.post(
+                            url=self.api_url,
+                            headers={
+                                "Content-Type": "application/json",
+                                "HTTP-Referer": "https://github.com/PRISSET/botmem",
+                                "X-Title": "ChatGPT Bot"
+                            },
+                            json=data
+                        ) as response2:
+                            print(f"Статус ответа (способ 2): {response2.status}")
+                            
+                            if response2.status != 200:
+                                response_text2 = await response2.text()
+                                print(f"Ошибка API (способ 2): {response_text2}")
+                                
+                                # Попытка 3: с другим URL
+                                alt_url = "https://api.openrouter.ai/api/v1/chat/completions"
+                                print(f"Пробуем URL: {alt_url}")
+                                
+                                # Пробуем другой URL API с исходными заголовками
+                                async with session.post(
+                                    url=alt_url,
+                                    headers=self.headers,
+                                    json={
+                                        "model": "openai/gpt-4o-mini",
+                                        "messages": messages,
+                                        "max_tokens": max_tokens,
+                                        "temperature": temperature
+                                    }
+                                ) as response3:
+                                    print(f"Статус ответа (способ 3): {response3.status}")
+                                    
+                                    if response3.status != 200:
+                                        response_text3 = await response3.text()
+                                        print(f"Ошибка API (способ 3): {response_text3}")
+                                        return None
+                                    else:
+                                        result3 = await response3.json()
+                                        print("Успех со способом 3!")
+                                        return result3["choices"][0]["message"]["content"]
+                            else:
+                                result2 = await response2.json()
+                                print("Успех со способом 2!")
+                                return result2["choices"][0]["message"]["content"]
+                    else:
+                        result = await response.json()
+                        print("Успех с первым способом!")
+                        return result["choices"][0]["message"]["content"]
+                        
         except Exception as e:
             print(f"Ошибка _send_request: {e}")
             print(f"Тип ошибки: {type(e)}")
