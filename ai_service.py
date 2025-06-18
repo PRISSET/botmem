@@ -1,13 +1,27 @@
 import openai
 from config import OPENAI_API_KEY
 import random
+import importlib
+import sys
 
 class AIService:
     def __init__(self):
-        # Настройка для старой версии OpenAI API с OpenRouter
-        openai.api_key = OPENAI_API_KEY
-        openai.api_base = "https://openrouter.ai/api/v1"
-        # Эти заголовки необходимы для работы с OpenRouter
+        # Проверка версии OpenAI SDK
+        self.is_old_version = False
+        try:
+            # Пытаемся использовать новый интерфейс
+            self.client = openai.OpenAI(
+                api_key=OPENAI_API_KEY,
+                base_url="https://openrouter.ai/api/v1"
+            )
+        except AttributeError:
+            # Если не получается, используем старый интерфейс
+            print("Используется старая версия OpenAI SDK (0.28.x)")
+            self.is_old_version = True
+            openai.api_key = OPENAI_API_KEY
+            openai.api_base = "https://openrouter.ai/api/v1"
+            
+        # Заголовки для OpenRouter API
         self.headers = {
             "HTTP-Referer": "https://github.com/PRISSET/botmem",
             "X-Title": "ChatGPT Bot"
@@ -24,18 +38,30 @@ class AIService:
             Матерись по-настоящему, говори жестко и прямо как на зоне.
             """
             
-            response = openai.ChatCompletion.create(
-                model="openai/gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Ты зек с большим опытом зоны, говоришь тюремным жаргоном с матом, используешь настоящие зоновские фразы."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=300,
-                temperature=0.8,
-                headers=self.headers
-            )
+            system_message = "Ты зек с большим опытом зоны, говоришь тюремным жаргоном с матом, используешь настоящие зоновские фразы."
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt}
+            ]
             
-            return response["choices"][0]["message"]["content"]
+            if self.is_old_version:
+                response = openai.ChatCompletion.create(
+                    model="openai/gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=300,
+                    temperature=0.8,
+                    headers=self.headers
+                )
+                return response["choices"][0]["message"]["content"]
+            else:
+                response = self.client.chat.completions.create(
+                    model="openai/gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=300,
+                    temperature=0.8
+                )
+                return response.choices[0].message.content
+                
         except Exception as e:
             print(f"Ошибка create_reminder_text: {e}")
             return f"Братуха нахуй, не забывай про {activity} в {time}! Сука блять, шершавый прутик напоминает - стальной шершень не прощает! Колесо крылатого шершня крутится, дьявольский поршень давит! Не шкваркнись баяном, братуха!"
@@ -85,15 +111,24 @@ class AIService:
             
             messages.append({"role": "user", "content": f"{username}: {user_message}"})
             
-            response = openai.ChatCompletion.create(
-                model="openai/gpt-4o-mini",
-                messages=messages,
-                max_tokens=1000,
-                temperature=0.9,
-                headers=self.headers
-            )
-            
-            return response["choices"][0]["message"]["content"]
+            if self.is_old_version:
+                response = openai.ChatCompletion.create(
+                    model="openai/gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=1000,
+                    temperature=0.9,
+                    headers=self.headers
+                )
+                return response["choices"][0]["message"]["content"]
+            else:
+                response = self.client.chat.completions.create(
+                    model="openai/gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=1000,
+                    temperature=0.9
+                )
+                return response.choices[0].message.content
+                
         except Exception as e:
             print(f"Ошибка chat_response: {e}")
             return f"Братуха нахуй {username}, сука блять, у меня тут шершавый прутик заглючил! Ебать, стальной шершень не работает, но морская резьба крутится дальше! Колесо крылатого шершня не остановить, дьявольский поршень пашет! Не шкваркнись баяном, братуха!"
@@ -109,18 +144,30 @@ class AIService:
             Матерись и говори как настоящий зек с зоны.
             """
             
-            response = openai.ChatCompletion.create(
-                model="openai/gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Ты зек с большим опытом зоны, делаешь жесткие шутки тюремным жаргоном с матом."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=400,
-                temperature=0.9,
-                headers=self.headers
-            )
+            system_message = "Ты зек с большим опытом зоны, делаешь жесткие шутки тюремным жаргоном с матом."
+            messages = [
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt}
+            ]
             
-            return response["choices"][0]["message"]["content"]
+            if self.is_old_version:
+                response = openai.ChatCompletion.create(
+                    model="openai/gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=400,
+                    temperature=0.9,
+                    headers=self.headers
+                )
+                return response["choices"][0]["message"]["content"]
+            else:
+                response = self.client.chat.completions.create(
+                    model="openai/gpt-4o-mini",
+                    messages=messages,
+                    max_tokens=400,
+                    temperature=0.9
+                )
+                return response.choices[0].message.content
+                
         except Exception as e:
             print(f"Ошибка generate_evil_joke: {e}")
             return f"Братуха нахуй, а вы знали что {random.choice(self.target_names)} такой ебанутый что даже шершавый прутик не выдерживает? Сука блять, стальной шершень от него плавится! Морская резьба крутится, колесо крылатого шершня дымится, дьявольский поршень шкваркнулся баяном! Иуууу ебать!"
