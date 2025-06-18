@@ -4,84 +4,78 @@ import random
 import importlib
 import sys
 import os
+import requests
+import json
 
 class AIService:
     def __init__(self):
         # API ключ OpenRouter
-        self.openrouter_api_key = "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"
+        self.api_key = "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"
+        self.api_url = "https://openrouter.ai/api/v1/chat/completions"
         
-        # Установка API ключа в переменную окружения (для новой версии OpenAI SDK)
-        os.environ["OPENAI_API_KEY"] = self.openrouter_api_key
-        
-        # Проверка версии OpenAI SDK
-        self.is_old_version = False
-        try:
-            # Пытаемся использовать новый интерфейс
-            self.client = openai.OpenAI(
-                api_key=self.openrouter_api_key,
-                base_url="https://openrouter.ai/api/v1",
-                default_headers={
-                    "HTTP-Referer": "https://github.com/PRISSET/botmem",
-                    "X-Title": "ChatGPT Bot"
-                }
-            )
-            print("Используется новая версия OpenAI SDK (≥1.0.0)")
-        except AttributeError:
-            # Если не получается, используем старый интерфейс
-            print("Используется старая версия OpenAI SDK (0.28.x)")
-            self.is_old_version = True
-            openai.api_key = self.openrouter_api_key  # Используем ключ OpenRouter вместо OPENAI_API_KEY
-            openai.api_base = "https://openrouter.ai/api/v1"
-            
-        # Заголовки для OpenRouter API с старой версией SDK
+        # Заголовки для запросов к API
         self.headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
             "HTTP-Referer": "https://github.com/PRISSET/botmem",
-            "X-Title": "ChatGPT Bot",
-            "Authorization": f"Bearer {self.openrouter_api_key}"
+            "X-Title": "ChatGPT Bot"
         }
         
         self.target_names = ["Назар", "Леша", "Миша", "Михаил", "Андрей", "Дима"]
     
-    async def create_reminder_text(self, activity, time):
+    async def _send_request(self, messages, max_tokens=1000, temperature=0.8):
+        """Отправляет запрос к API OpenRouter напрямую через requests"""
         try:
-            prompt = f"""
-            Создай напоминание о {activity} в {time}.
-            Говори в тюремном жаргоне с настоящими зоновскими фразами.
-            Используй: братуха нахуй, сука блять, шершавый прутик, стальной шершень, морская резьба, колесо крылатого шершня, дьявольский поршень, шкваркнуться баяном.
-            Матерись по-настоящему, говори жестко и прямо как на зоне.
-            """
+            data = {
+                "model": "openai/gpt-4o-mini",
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            }
             
-            system_message = "Ты зек с большим опытом зоны, говоришь тюремным жаргоном с матом, используешь настоящие зоновские фразы."
-            messages = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ]
+            print(f"Отправка запроса к OpenRouter API: {self.api_url}")
+            print(f"Заголовки: {self.headers}")
+            print(f"Данные: {json.dumps(data)[:200]}...")
             
-            if self.is_old_version:
-                print("Вызов create_reminder_text через старый API")
-                response = openai.ChatCompletion.create(
-                    model="openai/gpt-4o-mini",
-                    messages=messages,
-                    max_tokens=300,
-                    temperature=0.8,
-                    headers=self.headers
-                )
-                return response["choices"][0]["message"]["content"]
-            else:
-                print("Вызов create_reminder_text через новый API")
-                response = self.client.chat.completions.create(
-                    model="openai/gpt-4o-mini",
-                    messages=messages,
-                    max_tokens=300,
-                    temperature=0.8
-                )
-                return response.choices[0].message.content
+            response = requests.post(
+                url=self.api_url,
+                headers=self.headers,
+                json=data
+            )
+            
+            print(f"Статус ответа: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"Ошибка API: {response.text}")
+                return None
                 
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
         except Exception as e:
-            print(f"Ошибка create_reminder_text: {e}")
+            print(f"Ошибка _send_request: {e}")
             print(f"Тип ошибки: {type(e)}")
             import traceback
             traceback.print_exc()
+            return None
+    
+    async def create_reminder_text(self, activity, time):
+        prompt = f"""
+        Создай напоминание о {activity} в {time}.
+        Говори в тюремном жаргоне с настоящими зоновскими фразами.
+        Используй: братуха нахуй, сука блять, шершавый прутик, стальной шершень, морская резьба, колесо крылатого шершня, дьявольский поршень, шкваркнуться баяном.
+        Матерись по-настоящему, говори жестко и прямо как на зоне.
+        """
+        
+        system_message = "Ты зек с большим опытом зоны, говоришь тюремным жаргоном с матом, используешь настоящие зоновские фразы."
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": prompt}
+        ]
+        
+        response = await self._send_request(messages, max_tokens=300, temperature=0.8)
+        if response:
+            return response
+        else:
             return f"Братуха нахуй, не забывай про {activity} в {time}! Сука блять, шершавый прутик напоминает - стальной шершень не прощает! Колесо крылатого шершня крутится, дьявольский поршень давит! Не шкваркнись баяном, братуха!"
     
     async def chat_response(self, user_message, chat_history, username):
@@ -129,25 +123,11 @@ class AIService:
             
             messages.append({"role": "user", "content": f"{username}: {user_message}"})
             
-            if self.is_old_version:
-                print("Вызов chat_response через старый API")
-                response = openai.ChatCompletion.create(
-                    model="openai/gpt-4o-mini",
-                    messages=messages,
-                    max_tokens=1000,
-                    temperature=0.9,
-                    headers=self.headers
-                )
-                return response["choices"][0]["message"]["content"]
+            response = await self._send_request(messages, max_tokens=1000, temperature=0.9)
+            if response:
+                return response
             else:
-                print("Вызов chat_response через новый API")
-                response = self.client.chat.completions.create(
-                    model="openai/gpt-4o-mini",
-                    messages=messages,
-                    max_tokens=1000,
-                    temperature=0.9
-                )
-                return response.choices[0].message.content
+                return f"Братуха нахуй {username}, сука блять, у меня тут шершавый прутик заглючил! Ебать, стальной шершень не работает, но морская резьба крутится дальше! Колесо крылатого шершня не остановить, дьявольский поршень пашет! Не шкваркнись баяном, братуха!"
                 
         except Exception as e:
             print(f"Ошибка chat_response: {e}")
@@ -173,25 +153,11 @@ class AIService:
                 {"role": "user", "content": prompt}
             ]
             
-            if self.is_old_version:
-                print("Вызов generate_evil_joke через старый API")
-                response = openai.ChatCompletion.create(
-                    model="openai/gpt-4o-mini",
-                    messages=messages,
-                    max_tokens=400,
-                    temperature=0.9,
-                    headers=self.headers
-                )
-                return response["choices"][0]["message"]["content"]
+            response = await self._send_request(messages, max_tokens=400, temperature=0.9)
+            if response:
+                return response
             else:
-                print("Вызов generate_evil_joke через новый API")
-                response = self.client.chat.completions.create(
-                    model="openai/gpt-4o-mini",
-                    messages=messages,
-                    max_tokens=400,
-                    temperature=0.9
-                )
-                return response.choices[0].message.content
+                return f"Братуха нахуй, а вы знали что {random.choice(self.target_names)} такой ебанутый что даже шершавый прутик не выдерживает? Сука блять, стальной шершень от него плавится! Морская резьба крутится, колесо крылатого шершня дымится, дьявольский поршень шкваркнулся баяном! Иуууу ебать!"
                 
         except Exception as e:
             print(f"Ошибка generate_evil_joke: {e}")
