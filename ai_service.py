@@ -4,9 +4,14 @@ import random
 
 class AIService:
     def __init__(self):
-        # Настройка для старой версии OpenAI API
+        # Настройка для старой версии OpenAI API с OpenRouter
         openai.api_key = OPENAI_API_KEY
         openai.api_base = "https://openrouter.ai/api/v1"
+        # Эти заголовки необходимы для работы с OpenRouter
+        self.headers = {
+            "HTTP-Referer": "https://github.com/PRISSET/botmem",
+            "X-Title": "ChatGPT Bot"
+        }
         
         self.target_names = ["Назар", "Леша", "Миша", "Михаил", "Андрей", "Дима"]
     
@@ -26,11 +31,13 @@ class AIService:
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=300,
-                temperature=0.8
+                temperature=0.8,
+                headers=self.headers
             )
             
             return response["choices"][0]["message"]["content"]
         except Exception as e:
+            print(f"Ошибка create_reminder_text: {e}")
             return f"Братуха нахуй, не забывай про {activity} в {time}! Сука блять, шершавый прутик напоминает - стальной шершень не прощает! Колесо крылатого шершня крутится, дьявольский поршень давит! Не шкваркнись баяном, братуха!"
     
     async def chat_response(self, user_message, chat_history, username):
@@ -82,11 +89,13 @@ class AIService:
                 model="openai/gpt-4o-mini",
                 messages=messages,
                 max_tokens=1000,
-                temperature=0.9
+                temperature=0.9,
+                headers=self.headers
             )
             
             return response["choices"][0]["message"]["content"]
         except Exception as e:
+            print(f"Ошибка chat_response: {e}")
             return f"Братуха нахуй {username}, сука блять, у меня тут шершавый прутик заглючил! Ебать, стальной шершень не работает, но морская резьба крутится дальше! Колесо крылатого шершня не остановить, дьявольский поршень пашет! Не шкваркнись баяном, братуха!"
     
     async def generate_evil_joke(self):
@@ -107,11 +116,13 @@ class AIService:
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=400,
-                temperature=0.9
+                temperature=0.9,
+                headers=self.headers
             )
             
             return response["choices"][0]["message"]["content"]
         except Exception as e:
+            print(f"Ошибка generate_evil_joke: {e}")
             return f"Братуха нахуй, а вы знали что {random.choice(self.target_names)} такой ебанутый что даже шершавый прутик не выдерживает? Сука блять, стальной шершень от него плавится! Морская резьба крутится, колесо крылатого шершня дымится, дьявольский поршень шкваркнулся баяном! Иуууу ебать!"
 
 ai_service = AIService() 
