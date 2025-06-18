@@ -4,10 +4,9 @@ import random
 
 class AIService:
     def __init__(self):
-        self.client = openai.OpenAI(
-            api_key=OPENAI_API_KEY,
-            base_url="https://openrouter.ai/api/v1"
-        )
+        # Настройка для старой версии OpenAI API
+        openai.api_key = OPENAI_API_KEY
+        openai.api_base = "https://openrouter.ai/api/v1"
         
         self.target_names = ["Назар", "Леша", "Миша", "Михаил", "Андрей", "Дима"]
     
@@ -20,7 +19,7 @@ class AIService:
             Матерись по-настоящему, говори жестко и прямо как на зоне.
             """
             
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="openai/gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "Ты зек с большим опытом зоны, говоришь тюремным жаргоном с матом, используешь настоящие зоновские фразы."},
@@ -30,7 +29,7 @@ class AIService:
                 temperature=0.8
             )
             
-            return response.choices[0].message.content
+            return response["choices"][0]["message"]["content"]
         except Exception as e:
             return f"Братуха нахуй, не забывай про {activity} в {time}! Сука блять, шершавый прутик напоминает - стальной шершень не прощает! Колесо крылатого шершня крутится, дьявольский поршень давит! Не шкваркнись баяном, братуха!"
     
@@ -79,14 +78,14 @@ class AIService:
             
             messages.append({"role": "user", "content": f"{username}: {user_message}"})
             
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="openai/gpt-4o-mini",
                 messages=messages,
                 max_tokens=1000,
                 temperature=0.9
             )
             
-            return response.choices[0].message.content
+            return response["choices"][0]["message"]["content"]
         except Exception as e:
             return f"Братуха нахуй {username}, сука блять, у меня тут шершавый прутик заглючил! Ебать, стальной шершень не работает, но морская резьба крутится дальше! Колесо крылатого шершня не остановить, дьявольский поршень пашет! Не шкваркнись баяном, братуха!"
     
@@ -101,7 +100,7 @@ class AIService:
             Матерись и говори как настоящий зек с зоны.
             """
             
-            response = self.client.chat.completions.create(
+            response = openai.ChatCompletion.create(
                 model="openai/gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "Ты зек с большим опытом зоны, делаешь жесткие шутки тюремным жаргоном с матом."},
@@ -111,7 +110,7 @@ class AIService:
                 temperature=0.9
             )
             
-            return response.choices[0].message.content
+            return response["choices"][0]["message"]["content"]
         except Exception as e:
             return f"Братуха нахуй, а вы знали что {random.choice(self.target_names)} такой ебанутый что даже шершавый прутик не выдерживает? Сука блять, стальной шершень от него плавится! Морская резьба крутится, колесо крылатого шершня дымится, дьявольский поршень шкваркнулся баяном! Иуууу ебать!"
 
